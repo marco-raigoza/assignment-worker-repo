@@ -6,44 +6,46 @@ var arrayOfLinkObjects = [
 ]
 
 addEventListener('fetch', event => {
-  if (event.request.url == "http://localhost:8000/links"){
-    event.respondWith(returnLinkObjects())
+  let url = new URL(event.request.url);
+  if (url.pathname == '/links'){
+    event.respondWith(getStringLinks());
   } else {
-    event.respondWith(incorrectRequest())
+    event.respondWith(getStaticHTML(), {
+    headers: { "Content-Type" : "text/html"},
+    status: 200
+  });
   }
 })
 /**
- * Respond with link objects
+ * Respond with links as strings
  */
-async function returnLinkObjects() {
+async function getStringLinks() {
   return new Response(JSON.stringify(arrayOfLinkObjects), {
       headers: { "Content-Type": "application/json" },
       status: 200
-  })
+  });
 }
 
 /**
- * Respond with static HTML page
+ * Respond with links as static HTML page
  */
-// async function incorrectRequest() {
-//   return new Response("Please send a request to http://localhost:8000/links", {
-//       status: 200
-//   })
-// }
 class LinksTransformer {
   constructor(arrayOfLinkObjects) {
-    this.arrayOfLinkObjects = arrayOfLinkObjects
+    this.arrayOfLinkObjects = arrayOfLinkObjects;
   }
 
-  async element(element) {  
-    element.append(arrayOfLinkObjects);
+  element(element) {
+    //Make each link into an element
+    for (let i = 0; i < arrayOfLinkObjects.length; i++) {
+      var newElement = "<a href=\"" + arrayOfLinkObjects[i].url + "\">" + arrayOfLinkObjects[i].name + "</a>\n";
+      element.append(newElement, { html: true });
+    }
   }
 }
 
-async function incorrectRequest() {
-  const res = await fetch("https://static-links-page.signalnerve.workers.dev")
+async function getStaticHTML() {
+  const res = await fetch("https://static-links-page.signalnerve.workers.dev");
 
-  return new Response( new HTMLRewriter().on("div", new LinksTransformer(arrayOfLinkObjects)).transform(res), {
-    headers: { "Content-Type" : "text/html; charset=UTF-8"}
-  });
+  return ( new HTMLRewriter().on("#links",
+    new LinksTransformer(arrayOfLinkObjects)).transform(res));
 }
